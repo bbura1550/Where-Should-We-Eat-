@@ -1,0 +1,2857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a0d07" />
+  <title>M &amp; B's Dinner Decider</title>
+  <meta name="description" content="A western saloon slot machine that helps M and B decide where to eat." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Special+Elite&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ---------------------------------------------------------------
+       1. Theme tokens and base page styles
+       --------------------------------------------------------------- */
+    :root {
+      --wood-deep: #170a05;
+      --wood-dark: #2d160b;
+      --wood: #462312;
+      --wood-light: #6a3a1e;
+      --brass: #c9953b;
+      --brass-bright: #f4d183;
+      --brass-dark: #7b4d18;
+      --paper: #ead8b1;
+      --paper-dark: #c7aa77;
+      --ink: #342012;
+      --red: #7a1d1a;
+      --gold: #ffd166;
+      --row-h: clamp(72px, 19vw, 94px);
+      --machine-width: 560px;
+      --shadow-heavy: 0 28px 60px rgba(0, 0, 0, 0.65);
+      color-scheme: dark;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      background: #170a05;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      color: #f3dfb6;
+      font-family: "Special Elite", "Courier New", serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    /* ---------------------------------------------------------------
+       2. Saloon wall / desert sunset background
+       --------------------------------------------------------------- */
+    .scene {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      overflow: hidden;
+      pointer-events: none;
+      transition: background 0.5s ease;
+    }
+
+    body.theme-night .scene {
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(255, 176, 78, 0.22), transparent 42%),
+        radial-gradient(ellipse at 50% 44%, rgba(100, 40, 16, 0.34), transparent 70%),
+        linear-gradient(180deg, #1a0c07 0%, #2f170c 55%, #0f0604 100%);
+    }
+
+    body.theme-day .scene {
+      background:
+        radial-gradient(circle at 50% 25%, rgba(255, 244, 174, 0.9) 0 7%, rgba(255, 196, 91, 0.55) 12%, transparent 30%),
+        linear-gradient(180deg, #41243f 0%, #8f3b45 30%, #d96b3b 52%, #e8a14b 67%, #8a4a2a 100%);
+    }
+
+    .sun {
+      position: absolute;
+      top: 13%;
+      left: 50%;
+      width: min(34vw, 260px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, #fff8cd 0 35%, #ffd166 58%, rgba(255, 153, 51, 0) 72%);
+      filter: blur(1px);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body.theme-day .sun {
+      opacity: 1;
+    }
+
+    .mountains {
+      position: absolute;
+      left: -5%;
+      right: -5%;
+      transition: opacity 0.5s ease;
+    }
+
+    .mountains-back {
+      bottom: 20%;
+      height: 28%;
+      background: linear-gradient(180deg, #5b2a2a, #3a1b18);
+      clip-path: polygon(0 100%, 0 62%, 8% 44%, 16% 58%, 25% 32%, 34% 55%, 44% 40%, 53% 60%, 63% 36%, 72% 54%, 82% 42%, 91% 58%, 100% 46%, 100% 100%);
+      opacity: 0.18;
+    }
+
+    .mountains-front {
+      bottom: 12%;
+      height: 21%;
+      background: linear-gradient(180deg, #3a1a12, #1c0b08);
+      clip-path: polygon(0 100%, 0 70%, 10% 52%, 19% 68%, 30% 44%, 41% 66%, 52% 50%, 62% 70%, 74% 46%, 86% 64%, 94% 52%, 100% 62%, 100% 100%);
+      opacity: 0.18;
+    }
+
+    body.theme-day .mountains-back {
+      opacity: 0.55;
+    }
+
+    body.theme-day .mountains-front {
+      opacity: 0.68;
+    }
+
+    .wall-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.55;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 78px, rgba(0, 0, 0, 0.28) 78px 82px, transparent 82px 84px),
+        repeating-linear-gradient(178deg, transparent 0 6px, rgba(0, 0, 0, 0.11) 6px 7px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04), transparent 30%, transparent 70%, rgba(0, 0, 0, 0.18));
+    }
+
+    body.theme-day .wall-grain {
+      opacity: 0.12;
+    }
+
+    .scene::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.42) 100%);
+    }
+
+    /* ---------------------------------------------------------------
+       3. Layout and marquee sign
+       --------------------------------------------------------------- */
+    .stage {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: min(100%, 820px);
+      margin: 0 auto;
+      padding: clamp(18px, 4vh, 42px) 10px 64px;
+    }
+
+    .machine {
+      position: relative;
+      width: min(var(--machine-width), calc(100% - 44px));
+    }
+
+    .marquee {
+      position: relative;
+      z-index: 4;
+      padding: 12px 36px;
+      text-align: center;
+      background:
+        radial-gradient(ellipse at 50% 20%, rgba(255, 209, 102, 0.24), transparent 55%),
+        linear-gradient(180deg, #7f211c 0%, #5c1513 52%, #330b0a 100%);
+      border: 5px solid var(--brass-dark);
+      border-radius: 18px 18px 8px 8px;
+      box-shadow:
+        inset 0 0 0 3px var(--brass),
+        inset 0 0 34px rgba(0, 0, 0, 0.55),
+        0 12px 24px rgba(0, 0, 0, 0.55);
+    }
+
+    .marquee::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border: 1px solid rgba(244, 209, 131, 0.55);
+      border-radius: 10px;
+      pointer-events: none;
+    }
+
+    .marquee-inner {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 66px;
+    }
+
+    .marquee h1 {
+      margin: 0;
+      font-family: "Rye", Georgia, serif;
+      font-size: clamp(23px, 5.4vw, 42px);
+      line-height: 0.98;
+      letter-spacing: 0.01em;
+      color: #ffe9a8;
+      text-shadow:
+        0 2px 0 #5b1d08,
+        0 0 10px rgba(255, 206, 92, 0.55),
+        0 0 24px rgba(255, 172, 46, 0.35);
+    }
+
+    .marquee h1 span {
+      display: block;
+      font-size: 0.78em;
+      letter-spacing: 0.03em;
+    }
+
+    .marquee-star {
+      color: #ffd166;
+      font-size: clamp(13px, 2.6vw, 20px);
+      text-shadow: 0 0 9px rgba(255, 196, 61, 0.85);
+      animation: starTwinkle 1.8s ease-in-out infinite alternate;
+    }
+
+    .marquee-bulbs {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .bulb {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle at 35% 35%, #fffbe2, #ffd166 42%, #b87514 100%);
+      box-shadow: 0 0 4px #ffca5e, 0 0 9px rgba(255, 180, 60, 0.8);
+      opacity: 0.35;
+      animation: bulbChase 1.4s linear infinite;
+      animation-delay: var(--delay);
+    }
+    /* ---------------------------------------------------------------
+       4. Wooden cabinet, rivets, and reels
+       --------------------------------------------------------------- */
+    .cabinet {
+      position: relative;
+      z-index: 2;
+      margin-top: -8px;
+      padding: 18px clamp(12px, 4vw, 22px) 20px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255, 190, 90, 0.12), transparent 38%),
+        repeating-linear-gradient(92deg, #3d1e0f 0 22px, #4b2513 22px 44px, #34190c 44px 68px),
+        #2d160b;
+      border: 6px solid var(--brass-dark);
+      border-radius: 10px 10px 22px 22px;
+      box-shadow:
+        inset 0 0 0 3px var(--brass),
+        inset 0 0 0 6px #5c3411,
+        inset 0 0 60px rgba(0, 0, 0, 0.45),
+        var(--shadow-heavy);
+    }
+
+    .cabinet::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      opacity: 0.55;
+      background:
+        repeating-linear-gradient(178deg, transparent 0 5px, rgba(0, 0, 0, 0.13) 5px 6px),
+        repeating-linear-gradient(88deg, transparent 0 17px, rgba(255, 255, 255, 0.026) 17px 18px);
+    }
+
+    .cabinet > *:not(.rivet) {
+      position: relative;
+      z-index: 1;
+    }
+
+    .rivet {
+      position: absolute;
+      z-index: 3;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffe4a0, #c9953b 45%, #5d3a10 100%);
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 1px 2px rgba(0, 0, 0, 0.8);
+    }
+
+    .rv-tl { top: 8px; left: 8px; }
+    .rv-tr { top: 8px; right: 8px; }
+    .rv-bl { bottom: 8px; left: 8px; }
+    .rv-br { bottom: 8px; right: 8px; }
+    .rv-ml { top: 50%; left: 8px; transform: translateY(-50%); }
+    .rv-mr { top: 50%; right: 8px; transform: translateY(-50%); }
+
+    .cabinet-plate {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 4px 10px;
+      font-family: "Oswald", sans-serif;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #d9b16b;
+      opacity: 0.9;
+    }
+
+    .reels-frame {
+      position: relative;
+      padding: 7px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #22140b, #0e0805);
+      box-shadow:
+        inset 0 0 0 3px #7b4d18,
+        inset 0 0 0 4px #e0b45f,
+        inset 0 8px 18px rgba(0, 0, 0, 0.9),
+        0 2px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .reels {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .reel-window {
+      position: relative;
+      height: calc(var(--row-h) * 3);
+      overflow: hidden;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #cbb17f, #ead8b1);
+      box-shadow: inset 0 0 0 2px #4e2d13, inset 0 10px 18px rgba(0, 0, 0, 0.35);
+      isolation: isolate;
+    }
+
+    .reel-window::before,
+    .reel-window::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 20%;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .reel-window::before {
+      top: 0;
+      background: linear-gradient(180deg, rgba(30, 14, 5, 0.55), transparent);
+    }
+
+    .reel-window::after {
+      bottom: 0;
+      background: linear-gradient(0deg, rgba(30, 14, 5, 0.55), transparent);
+    }
+
+    .reel-bounce {
+      height: 100%;
+      will-change: transform;
+    }
+
+    .reel-strip {
+      will-change: transform;
+      transform: translate3d(0, 0, 0);
+    }
+
+    .reel-window.spinning .reel-strip {
+      filter: blur(0.8px);
+    }
+
+    .reel-bounce.settling {
+      animation: reelSettle 0.42s ease-out;
+    }
+
+    .reel-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      height: var(--row-h);
+      padding: 5px 4px;
+      overflow: hidden;
+      text-align: center;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 22% 12%, rgba(255, 255, 255, 0.36), transparent 40%),
+        linear-gradient(180deg, #f3e6c4, #d9c193);
+      border-bottom: 1px solid rgba(80, 50, 25, 0.2);
+    }
+
+    .reel-name {
+      display: -webkit-box;
+      max-width: 100%;
+      overflow: hidden;
+      font-family: "Rye", Georgia, serif;
+      font-size: clamp(10px, 2.7vw, 15px);
+      line-height: 1.12;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .reel-meta {
+      max-width: 100%;
+      overflow: hidden;
+      color: #7a4b21;
+      font-family: "Oswald", sans-serif;
+      font-size: clamp(8px, 1.9vw, 10px);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .reel-item.placeholder .reel-name {
+      color: #7a4b21;
+      font-size: clamp(9px, 2.3vw, 12px);
+    }
+
+    .payline {
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      top: calc(50% - var(--row-h) / 2);
+      z-index: 5;
+      height: var(--row-h);
+      border-top: 2px solid rgba(255, 210, 100, 0.72);
+      border-bottom: 2px solid rgba(255, 210, 100, 0.72);
+      border-radius: 4px;
+      box-shadow: inset 0 0 20px rgba(255, 190, 60, 0.08);
+      pointer-events: none;
+    }
+
+    .winner-overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(50% - var(--row-h) / 2);
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--row-h);
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.86);
+      transition: opacity 0.45s ease, transform 0.5s cubic-bezier(0.2, 1.7, 0.4, 1);
+      background: radial-gradient(ellipse at center, rgba(20, 8, 2, 0.94) 0%, rgba(20, 8, 2, 0.7) 45%, transparent 78%);
+    }
+
+    .winner-overlay.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .winner-text {
+      font-family: "Rye", Georgia, serif;
+      font-size: clamp(26px, 8.5vw, 50px);
+      line-height: 1;
+      letter-spacing: 0.03em;
+      background: linear-gradient(180deg, #fff9c9 0%, #ffd45e 45%, #e49b23 70%, #8a5208 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(90, 45, 0, 0.65);
+      filter:
+        drop-shadow(0 0 8px rgba(255, 210, 90, 0.95))
+        drop-shadow(0 0 20px rgba(255, 170, 40, 0.6))
+        drop-shadow(0 4px 0 rgba(70, 30, 0, 0.8));
+      animation: winnerPulse 0.9s ease-in-out infinite alternate;
+    }
+
+    /* ---------------------------------------------------------------
+       5. Filters, pull button, lever, and utility buttons
+       --------------------------------------------------------------- */
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(14, 7, 3, 0.58);
+      box-shadow: inset 0 0 0 1px rgba(201, 149, 59, 0.45);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .field > span {
+      color: #e3c489;
+      font-family: "Oswald", sans-serif;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .field select,
+    .field input {
+      width: 100%;
+      min-height: 38px;
+      padding: 6px 10px;
+      border: 2px solid #7b4d18;
+      border-radius: 6px;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f7ebcd, #e2cfa2);
+      box-shadow: inset 0 2px 4px rgba(90, 50, 20, 0.2);
+      font-family: "Special Elite", "Courier New", serif;
+      font-size: 14px;
+      appearance: none;
+    }
+
+    .field select {
+      padding-right: 28px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237b4d18' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 12px;
+    }
+
+    .field select:focus,
+    .field input:focus {
+      outline: 2px solid #ffd166;
+      outline-offset: 1px;
+    }
+
+    .field select:disabled {
+      cursor: not-allowed;
+      filter: grayscale(0.35) brightness(0.85);
+    }
+
+    .pool-note {
+      margin: 8px 0 10px;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: #c9a46e;
+    }
+
+    .pool-note strong {
+      color: #ffd166;
+    }
+
+    .pull-btn {
+      width: 100%;
+      min-height: 64px;
+      border: 4px solid #5c3411;
+      border-radius: 12px;
+      color: #ffe6a0;
+      background: linear-gradient(180deg, #c7402f 0%, #8f211b 48%, #5c100e 100%);
+      box-shadow:
+        inset 0 0 0 2px #f1c56c,
+        inset 0 2px 0 rgba(255, 255, 255, 0.35),
+        0 7px 0 #3b1409,
+        0 12px 20px rgba(0, 0, 0, 0.5);
+      font-family: "Rye", Georgia, serif;
+      font-size: clamp(24px, 6vw, 34px);
+      letter-spacing: 0.08em;
+      text-shadow: 0 2px 0 #3b0b07, 0 0 14px rgba(255, 200, 80, 0.4);
+      cursor: pointer;
+      transition: transform 0.08s, box-shadow 0.08s, filter 0.2s;
+    }
+
+    .pull-btn span {
+      display: inline-block;
+      transform: rotate(-1.5deg);
+    }
+
+    .pull-btn:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    .pull-btn:active:not(:disabled) {
+      transform: translateY(5px);
+      box-shadow:
+        inset 0 0 0 2px #f1c56c,
+        inset 0 2px 0 rgba(255, 255, 255, 0.2),
+        0 2px 0 #3b1409,
+        0 5px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .pull-btn:disabled {
+      cursor: not-allowed;
+      filter: grayscale(0.5) brightness(0.6);
+    }
+
+    .machine-hint {
+      margin: 10px 0 0;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      color: #b98f58;
+    }
+
+    .lever {
+      position: absolute;
+      right: -34px;
+      top: 262px;
+      z-index: 6;
+      width: 62px;
+      height: 240px;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .lever.disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
+    .lever-track {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      width: 10px;
+      height: 190px;
+      transform: translateX(-50%);
+      border-radius: 6px;
+      background: linear-gradient(90deg, #1b0d05, #5c3411 45%, #1b0d05);
+      box-shadow: inset 0 0 0 1px rgba(240, 200, 120, 0.25);
+    }
+
+    .lever-base {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      width: 52px;
+      height: 26px;
+      transform: translateX(-50%);
+      border-radius: 8px 8px 10px 10px;
+      background: linear-gradient(180deg, #e2b25c, #8d5a1c 45%, #4a2a0c);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .lever-arm {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      width: 13px;
+      height: 172px;
+      transform: translateX(-50%) rotate(6deg);
+      transform-origin: 50% 100%;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #6d4315, #f3cf82 35%, #b87a2a 62%, #5c3411);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .lever.dragging .lever-arm {
+      transition: none;
+    }
+
+    .lever-shine {
+      position: absolute;
+      inset: 2px auto 2px 2px;
+      width: 3px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .lever-knob {
+      position: absolute;
+      top: -23px;
+      left: 50%;
+      width: 46px;
+      height: 46px;
+      transform: translateX(-50%);
+      border: 3px solid #e2b25c;
+      border-radius: 50%;
+      background: radial-gradient(circle at 34% 28%, #ff9b7d, #d33a2c 38%, #7a100d 78%, #3d0505);
+      box-shadow:
+        inset -4px -5px 8px rgba(0, 0, 0, 0.45),
+        inset 3px 3px 6px rgba(255, 255, 255, 0.3),
+        0 0 0 2px #5c3411,
+        0 6px 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .utility-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      width: min(var(--machine-width), calc(100% - 20px));
+      margin-top: 22px;
+    }
+
+    .utility-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 8px 13px;
+      border: 2px solid #7b4d18;
+      border-radius: 8px;
+      color: #e8c88e;
+      background: linear-gradient(180deg, #4a2815, #241109);
+      box-shadow: inset 0 0 0 1px rgba(240, 200, 120, 0.25), 0 4px 8px rgba(0, 0, 0, 0.35);
+      font-family: "Oswald", sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+    }
+
+    .utility-btn:hover {
+      filter: brightness(1.13);
+    }
+
+    .utility-btn:active {
+      transform: translateY(2px);
+    }
+
+    .sound-icon {
+      position: relative;
+      display: inline-flex;
+      width: 20px;
+      height: 20px;
+    }
+
+    .sound-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sound-slash {
+      position: absolute;
+      top: 9px;
+      left: 1px;
+      right: 1px;
+      height: 2px;
+      background: #e8c88e;
+      box-shadow: 0 0 0 1px #241109;
+      transform: rotate(-45deg);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .sound-btn.muted {
+      color: #a47f4b;
+    }
+
+    .sound-btn.muted .sound-slash {
+      opacity: 1;
+    }
+
+    .theme-icon {
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .saloon-icon {
+      position: relative;
+      display: inline-block;
+      width: 22px;
+      height: 18px;
+      border-top: 2px solid currentColor;
+    }
+
+    .saloon-icon::before,
+    .saloon-icon::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 9px;
+      height: 15px;
+      border: 1.5px solid currentColor;
+      border-radius: 2px 2px 0 0;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 45%);
+    }
+
+    .saloon-icon::before { left: 0; }
+    .saloon-icon::after { right: 0; }
+    /* ---------------------------------------------------------------
+       6. Winner card
+       --------------------------------------------------------------- */
+    .result-card {
+      position: relative;
+      width: min(var(--machine-width), calc(100% - 20px));
+      margin-top: 26px;
+      padding: 24px 24px 22px;
+      overflow: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.45), transparent 34%),
+        repeating-linear-gradient(0deg, transparent 0 3px, rgba(90, 55, 20, 0.05) 3px 4px),
+        linear-gradient(180deg, #f0e0ba, #d8c090);
+      border: 8px solid #3a2412;
+      border-radius: 5px;
+      box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.55),
+        inset 0 0 40px rgba(110, 65, 20, 0.25);
+    }
+
+    .result-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.6;
+      background:
+        radial-gradient(circle at 82% 78%, rgba(120, 75, 25, 0.18), transparent 30%),
+        radial-gradient(circle at 8% 92%, rgba(120, 75, 25, 0.16), transparent 28%);
+    }
+
+    .result-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .result-kicker {
+      margin: 0 0 4px;
+      text-align: center;
+      color: #7a4b21;
+      font-family: "Oswald", sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .winner-name {
+      margin: 0;
+      text-align: center;
+      color: #5b1d08;
+      font-family: "Rye", Georgia, serif;
+      font-size: clamp(25px, 6vw, 38px);
+      line-height: 1.08;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+
+    .winner-meta {
+      margin: 8px 0 16px;
+      text-align: center;
+      color: #5c3a1c;
+      font-family: "Oswald", sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .directions-btn {
+      display: block;
+      width: fit-content;
+      margin: 0 auto;
+      padding: 12px 22px;
+      border: 3px solid #5c3411;
+      border-radius: 8px;
+      color: #ffe6a0;
+      background: linear-gradient(180deg, #a82d22, #6d1612);
+      box-shadow: inset 0 0 0 2px #e0b45f, 0 4px 0 #3b1409;
+      font-family: "Oswald", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.13em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+
+    .directions-btn:hover {
+      filter: brightness(1.12);
+    }
+
+    .directions-btn:active {
+      transform: translateY(3px);
+      box-shadow: inset 0 0 0 2px #e0b45f, 0 1px 0 #3b1409;
+    }
+
+    .also-block {
+      margin-top: 22px;
+      padding-top: 17px;
+      border-top: 2px dashed rgba(90, 55, 20, 0.35);
+    }
+
+    .also-block h3 {
+      margin: 0 0 11px;
+      text-align: center;
+      color: #5b1d08;
+      font-family: "Rye", Georgia, serif;
+      font-size: 16px;
+      font-weight: 400;
+    }
+
+    .also-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .also-item {
+      padding: 8px 9px;
+      border: 1px solid rgba(90, 55, 20, 0.3);
+      border-radius: 4px;
+      background: rgba(255, 250, 235, 0.32);
+    }
+
+    .also-item .also-name {
+      display: block;
+      color: #4a2a10;
+      font-family: "Rye", Georgia, serif;
+      font-size: 12px;
+      line-height: 1.15;
+    }
+
+    .also-item .also-meta {
+      display: block;
+      margin-top: 2px;
+      color: #7a4b21;
+      font-family: "Oswald", sans-serif;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ---------------------------------------------------------------
+       7. Back Room modal and forms
+       --------------------------------------------------------------- */
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 2, 0, 0.74);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-card {
+      position: relative;
+      z-index: 1;
+      width: min(680px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      padding: 22px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% 5%, rgba(255, 255, 255, 0.45), transparent 28%),
+        repeating-linear-gradient(0deg, transparent 0 3px, rgba(90, 55, 20, 0.05) 3px 4px),
+        linear-gradient(180deg, #f2e3bf, #ddc89d);
+      border: 8px solid #3a2412;
+      border-radius: 8px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75), inset 0 0 0 2px #8d5a1c;
+      overscroll-behavior: contain;
+    }
+
+    .modal-card::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .modal-card::-webkit-scrollbar-thumb {
+      border-radius: 5px;
+      background: #8d5a1c;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-kicker {
+      margin: 0;
+      color: #8a5a1c;
+      font-family: "Oswald", sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .modal-head h2 {
+      margin: 2px 0 0;
+      color: #5b1d08;
+      font-family: "Rye", Georgia, serif;
+      font-size: clamp(25px, 5vw, 34px);
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    .modal-sub {
+      margin: 9px 0 17px;
+      color: #6b4524;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .close-btn {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      border: 2px solid #7b4d18;
+      border-radius: 50%;
+      color: #6b2a13;
+      background: rgba(255, 250, 235, 0.5);
+      font-size: 17px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      background: #f7ebcd;
+    }
+
+    .rest-form {
+      padding: 13px;
+      border: 2px solid rgba(123, 77, 24, 0.55);
+      border-radius: 8px;
+      background: rgba(255, 250, 235, 0.32);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .favorite-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 12px 0 4px;
+      color: #5c3a1c;
+      font-size: 12px;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+
+    .favorite-check input {
+      width: 20px;
+      height: 20px;
+      margin: 0;
+      accent-color: #8f211b;
+    }
+
+    .form-actions,
+    .data-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .form-actions {
+      margin-top: 12px;
+    }
+
+    .data-actions {
+      margin: 16px 0;
+      padding-top: 14px;
+      border-top: 1px dashed rgba(90, 55, 20, 0.35);
+    }
+
+    .main-btn,
+    .ghost-btn,
+    .mini-btn {
+      border-radius: 6px;
+      font-family: "Oswald", sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .main-btn {
+      min-height: 40px;
+      padding: 8px 16px;
+      border: 2px solid #5c3411;
+      color: #ffe6a0;
+      background: linear-gradient(180deg, #a82d22, #6d1612);
+      box-shadow: inset 0 0 0 1px #e0b45f, 0 3px 0 #3b1409;
+      font-size: 12px;
+    }
+
+    .main-btn:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 0 0 1px #e0b45f, 0 1px 0 #3b1409;
+    }
+
+    .ghost-btn {
+      min-height: 38px;
+      padding: 7px 12px;
+      border: 2px solid #7b4d18;
+      color: #5c3a1c;
+      background: rgba(255, 250, 235, 0.5);
+      font-size: 11px;
+    }
+
+    .ghost-btn:hover {
+      background: #f7ebcd;
+    }
+
+    .list-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .list-head h3 {
+      margin: 0;
+      color: #5b1d08;
+      font-family: "Rye", Georgia, serif;
+      font-size: 19px;
+      font-weight: 400;
+    }
+
+    .list-head span {
+      color: #7a4b21;
+      font-family: "Oswald", sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .restaurant-list {
+      max-height: 310px;
+      margin-top: 8px;
+      overflow-y: auto;
+      border: 2px solid rgba(123, 77, 24, 0.5);
+      border-radius: 6px;
+      background: rgba(255, 250, 235, 0.28);
+      overscroll-behavior: contain;
+    }
+
+    .rest-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 8px 8px 5px;
+      border-bottom: 1px dashed rgba(90, 55, 20, 0.28);
+    }
+
+    .rest-row:last-child {
+      border-bottom: 0;
+    }
+
+    .fav-btn {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      color: #9a712d;
+      background: transparent;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .fav-btn.active {
+      color: #c98a09;
+      text-shadow: 0 0 7px rgba(255, 190, 35, 0.8);
+    }
+
+    .rest-info {
+      min-width: 0;
+    }
+
+    .rest-info .rest-name {
+      overflow: hidden;
+      color: #4a2a10;
+      font-family: "Rye", Georgia, serif;
+      font-size: 13px;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rest-info .rest-meta {
+      overflow: hidden;
+      color: #7a4b21;
+      font-family: "Oswald", sans-serif;
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .rest-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .mini-btn {
+      min-height: 30px;
+      padding: 4px 7px;
+      border: 1px solid #7b4d18;
+      color: #5c3a1c;
+      background: rgba(255, 250, 235, 0.55);
+      font-size: 9px;
+    }
+
+    .mini-btn:hover {
+      background: #f7ebcd;
+    }
+
+    .empty-list {
+      margin: 0;
+      padding: 18px 12px;
+      text-align: center;
+      color: #7a4b21;
+      font-size: 12px;
+    }
+
+    .back-room-status {
+      min-height: 18px;
+      margin: 10px 0 0;
+      color: #3d6b3b;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .back-room-status.error {
+      color: #9d241b;
+    }
+
+    /* ---------------------------------------------------------------
+       8. Coins, sparkles, and toast messages
+       --------------------------------------------------------------- */
+    .coin-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .coin,
+    .sparkle {
+      position: absolute;
+      top: 0;
+      left: var(--x);
+      opacity: 0;
+    }
+
+    .coin {
+      display: grid;
+      place-items: center;
+      width: var(--size);
+      height: var(--size);
+      border: 1px solid #8a5a08;
+      border-radius: 50%;
+      color: #7a4a00;
+      background: radial-gradient(circle at 35% 30%, #fff7b0, #ffd24a 45%, #b87912 100%);
+      box-shadow: 0 0 8px rgba(255, 200, 60, 0.7);
+      font-family: "Oswald", sans-serif;
+      font-size: calc(var(--size) * 0.55);
+      font-weight: 600;
+      animation: coinFall var(--duration) cubic-bezier(0.24, 0.62, 0.58, 1) var(--delay) forwards;
+    }
+
+    .sparkle {
+      width: var(--size);
+      height: var(--size);
+      background: #ffe27a;
+      clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+      filter: drop-shadow(0 0 6px #ffd166);
+      animation: sparkleFall var(--duration) linear var(--delay) forwards;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      z-index: 200;
+      max-width: calc(100% - 32px);
+      padding: 10px 16px;
+      border: 2px solid var(--brass);
+      border-radius: 8px;
+      color: #ffe8b0;
+      background: #2b160b;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+      font-size: 13px;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, 18px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    /* ---------------------------------------------------------------
+       9. Animations
+       --------------------------------------------------------------- */
+    @keyframes bulbChase {
+      0%, 100% { opacity: 0.22; }
+      12%, 35% { opacity: 1; }
+      60% { opacity: 0.34; }
+    }
+
+    @keyframes starTwinkle {
+      from { opacity: 0.55; transform: scale(0.94); }
+      to { opacity: 1; transform: scale(1.08); }
+    }
+
+    @keyframes reelSettle {
+      0% { transform: translateY(0); }
+      30% { transform: translateY(8px); }
+      62% { transform: translateY(-3px); }
+      100% { transform: translateY(0); }
+    }
+
+    @keyframes winnerPulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.055); }
+    }
+
+    @keyframes coinFall {
+      0% { transform: translate3d(0, -8vh, 0) rotate(0deg); opacity: 0; }
+      8% { opacity: 1; }
+      100% { transform: translate3d(var(--drift), 112vh, 0) rotate(var(--spin)); opacity: 0.85; }
+    }
+
+    @keyframes sparkleFall {
+      0% { transform: translate3d(0, -8vh, 0) scale(0.4); opacity: 0; }
+      12% { opacity: 1; }
+      100% { transform: translate3d(var(--drift), 112vh, 0) scale(1); opacity: 0; }
+    }
+
+    @keyframes paylineFlash {
+      0%, 100% { box-shadow: inset 0 0 20px rgba(255, 190, 60, 0.08); }
+      50% { box-shadow: inset 0 0 28px rgba(255, 215, 90, 0.35), 0 0 16px rgba(255, 200, 60, 0.3); }
+    }
+
+    body.winning .bulb {
+      animation-duration: 0.4s;
+      opacity: 1;
+    }
+
+    body.winning .marquee h1 {
+      text-shadow:
+        0 2px 0 #5b1d08,
+        0 0 16px rgba(255, 220, 110, 0.95),
+        0 0 34px rgba(255, 180, 46, 0.7);
+    }
+
+    body.winning .payline {
+      animation: paylineFlash 0.5s ease-in-out infinite;
+    }
+
+    /* ---------------------------------------------------------------
+       10. Small-screen adjustments
+       --------------------------------------------------------------- */
+    @media (max-width: 640px) {
+      .marquee {
+        padding-right: 22px;
+        padding-left: 22px;
+      }
+
+      .marquee-star {
+        display: none;
+      }
+
+      .marquee-inner {
+        min-height: 58px;
+      }
+
+      .cabinet {
+        padding-right: 12px;
+        padding-left: 12px;
+      }
+
+      .lever {
+        top: 235px;
+        right: -10px;
+        transform: scale(0.9);
+        transform-origin: top right;
+      }
+
+      .result-card {
+        padding: 20px 16px 18px;
+      }
+
+      .also-list,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-card {
+        padding: 16px;
+      }
+
+      .utility-btn {
+        padding: 8px 10px;
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      :root {
+        --row-h: 70px;
+      }
+
+      .marquee h1 {
+        font-size: 22px;
+      }
+
+      .cabinet-plate {
+        font-size: 8px;
+        letter-spacing: 0.12em;
+      }
+
+      .filter-bar {
+        gap: 6px;
+        padding: 8px;
+      }
+
+      .lever {
+        top: 228px;
+        right: -6px;
+        transform: scale(0.82);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body class="theme-night">
+  <!-- Background scenery: desert sunset, mountains, and a saloon wall. -->
+  <div class="scene" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="mountains mountains-back"></div>
+    <div class="mountains mountains-front"></div>
+    <div class="wall-grain"></div>
+  </div>
+
+  <main class="stage">
+    <!-- The slot machine itself. -->
+    <div class="machine" id="machine">
+      <!-- Lit marquee sign with chasing bulbs. -->
+      <div class="marquee" aria-label="M and B's Dinner Decider">
+        <div class="marquee-bulbs" id="marqueeBulbs" aria-hidden="true"></div>
+        <div class="marquee-inner">
+          <span class="marquee-star" aria-hidden="true">★</span>
+          <h1>M &amp; B's <span>Dinner Decider</span></h1>
+          <span class="marquee-star" aria-hidden="true">★</span>
+        </div>
+      </div>
+
+      <div class="cabinet">
+        <span class="rivet rv-tl" aria-hidden="true"></span>
+        <span class="rivet rv-tr" aria-hidden="true"></span>
+        <span class="rivet rv-bl" aria-hidden="true"></span>
+        <span class="rivet rv-br" aria-hidden="true"></span>
+        <span class="rivet rv-ml" aria-hidden="true"></span>
+        <span class="rivet rv-mr" aria-hidden="true"></span>
+
+        <div class="cabinet-plate">
+          <span>Est. 2026</span>
+          <span>Cleveland, Ohio</span>
+        </div>
+
+        <!-- Optional filters, kept above the lever. -->
+        <div class="filter-bar">
+          <label class="field">
+            <span>Neighborhood</span>
+            <select id="neighborhoodFilter">
+              <option value="all">All neighborhoods</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Price</span>
+            <select id="priceFilter">
+              <option value="all">All prices</option>
+              <option value="$">$</option>
+              <option value="$$">$$</option>
+              <option value="$$$">$$$</option>
+              <option value="$$$$">$$$$</option>
+            </select>
+          </label>
+        </div>
+        <p class="pool-note"><strong id="poolCount">0</strong> restaurants in the hat</p>
+
+        <!-- Three reels, each with three visible rows. -->
+        <div class="reels-frame">
+          <div class="reels" id="reels">
+            <div class="reel-window" data-reel="0">
+              <div class="reel-bounce"><div class="reel-strip"></div></div>
+            </div>
+            <div class="reel-window" data-reel="1">
+              <div class="reel-bounce"><div class="reel-strip"></div></div>
+            </div>
+            <div class="reel-window" data-reel="2">
+              <div class="reel-bounce"><div class="reel-strip"></div></div>
+            </div>
+
+            <div class="payline" aria-hidden="true"></div>
+            <div class="winner-overlay" id="winnerOverlay" aria-hidden="true">
+              <span class="winner-text">WINNER!</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="pull-btn" id="pullBtn" type="button">
+          <span>PULL!</span>
+        </button>
+        <p class="machine-hint">Tap the lever or the button. Favorites get two chances.</p>
+      </div>
+
+      <!-- Lever on the right side of the cabinet. -->
+      <div class="lever" id="lever" role="button" tabindex="0" aria-label="Pull the slot machine lever">
+        <div class="lever-track" aria-hidden="true"></div>
+        <div class="lever-arm" id="leverArm" aria-hidden="true">
+          <div class="lever-shine"></div>
+          <div class="lever-knob"></div>
+        </div>
+        <div class="lever-base" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- Small utility buttons below the machine. -->
+    <div class="utility-bar">
+      <button class="utility-btn sound-btn" id="soundBtn" type="button" aria-pressed="false" aria-label="Sound on">
+        <span class="sound-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 3c-2.8 0-5 2.2-5 5v3.2L5 15h14l-2-3.8V8c0-2.8-2.2-5-5-5Z" />
+            <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
+          </svg>
+          <span class="sound-slash"></span>
+        </span>
+        <span id="soundLabel">Sound</span>
+      </button>
+
+      <button class="utility-btn" id="themeBtn" type="button" aria-label="Night theme">
+        <span class="theme-icon" id="themeIcon" aria-hidden="true">☾</span>
+        <span id="themeLabel">Night</span>
+      </button>
+
+      <button class="utility-btn saloon-btn" id="backRoomBtn" type="button">
+        <span class="saloon-icon" aria-hidden="true"></span>
+        <span>Back Room</span>
+      </button>
+    </div>
+
+    <!-- Winner card, hidden until a spin ends. -->
+    <section class="result-card" id="resultCard" aria-live="polite" hidden>
+      <p class="result-kicker">— Tonight's verdict —</p>
+      <h2 class="winner-name" id="winnerName"></h2>
+      <p class="winner-meta" id="winnerMeta"></p>
+      <a class="directions-btn" id="directionsBtn" href="#" target="_blank" rel="noopener noreferrer">Get Directions</a>
+
+      <div class="also-block">
+        <h3>Also worth considering</h3>
+        <ul class="also-list" id="alsoList"></ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- Back Room manager modal. -->
+  <div class="modal" id="backRoomModal" hidden>
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="backRoomTitle">
+      <div class="modal-head">
+        <div>
+          <p class="modal-kicker">Members only</p>
+          <h2 id="backRoomTitle">The Back Room</h2>
+        </div>
+        <button class="close-btn" id="closeBackRoom" type="button" aria-label="Close the Back Room">✕</button>
+      </div>
+      <p class="modal-sub">Add, edit, delete, or favorite restaurants. Changes are saved on this device.</p>
+
+      <form class="rest-form" id="restaurantForm">
+        <div class="form-grid">
+          <label class="field">
+            <span>Name</span>
+            <input id="restName" type="text" maxlength="80" required autocomplete="off" placeholder="e.g. Slyman's Restaurant" />
+          </label>
+          <label class="field">
+            <span>Neighborhood</span>
+            <input id="restNeighborhood" type="text" maxlength="50" list="neighborhoodSuggestions" required autocomplete="off" placeholder="e.g. Tremont" />
+          </label>
+          <label class="field">
+            <span>Cuisine</span>
+            <input id="restCuisine" type="text" maxlength="50" required autocomplete="off" placeholder="e.g. Polish" />
+          </label>
+          <label class="field">
+            <span>Price</span>
+            <select id="restPrice" required>
+              <option value="$">$</option>
+              <option value="$$" selected>$$</option>
+              <option value="$$$">$$$</option>
+              <option value="$$$$">$$$$</option>
+            </select>
+          </label>
+        </div>
+        <datalist id="neighborhoodSuggestions"></datalist>
+
+        <label class="favorite-check">
+          <input id="restFavorite" type="checkbox" />
+          <span>Favorite — gets about twice the chance of winning</span>
+        </label>
+
+        <div class="form-actions">
+          <button class="main-btn" id="restSubmitBtn" type="submit">Add to the list</button>
+          <button class="ghost-btn" id="cancelEditBtn" type="button" hidden>Cancel edit</button>
+        </div>
+      </form>
+
+      <div class="data-actions">
+        <button class="ghost-btn" id="resetListBtn" type="button">Reset starter list</button>
+        <button class="ghost-btn" id="exportListBtn" type="button">Export list</button>
+        <button class="ghost-btn" id="importListBtn" type="button">Import list</button>
+        <input id="importFile" type="file" accept=".json,application/json" hidden />
+      </div>
+
+      <div class="list-head">
+        <h3>Your list</h3>
+        <span id="restCount"></span>
+      </div>
+      <div class="restaurant-list" id="restaurantList"></div>
+      <p class="back-room-status" id="backRoomStatus" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <div class="coin-layer" id="coinLayer" aria-hidden="true"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    // ===============================================================
+    // 1. STARTER RESTAURANT LIST
+    //    Edit this array by hand to change the default list.
+    //    Each restaurant needs: name, neighborhood, cuisine,
+    //    price ("$" through "$$$$"), and favorite (true/false).
+    //    Favorites are roughly twice as likely to win.
+    // ===============================================================
+    const STARTER_RESTAURANTS = [
+      // --- Ohio City ---
+      { name: "Great Lakes Brewing Company", neighborhood: "Ohio City", cuisine: "Brewpub", price: "$$", favorite: true },
+      { name: "Mitchell's Ice Cream", neighborhood: "Ohio City", cuisine: "Ice Cream", price: "$", favorite: false },
+      { name: "Momocho", neighborhood: "Ohio City", cuisine: "Mexican", price: "$$", favorite: true },
+      { name: "TownHall", neighborhood: "Ohio City", cuisine: "American", price: "$$", favorite: false },
+      { name: "Barrio", neighborhood: "Ohio City", cuisine: "Mexican", price: "$$", favorite: false },
+      { name: "Saucy Brew Works", neighborhood: "Ohio City", cuisine: "Pizza & Brewery", price: "$$", favorite: false },
+      { name: "Nate's Deli", neighborhood: "Ohio City", cuisine: "Middle Eastern", price: "$", favorite: false },
+      { name: "ABC the Tavern", neighborhood: "Ohio City", cuisine: "Pub", price: "$", favorite: false },
+      { name: "Bookhouse Brewing", neighborhood: "Ohio City", cuisine: "Brewery", price: "$$", favorite: false },
+
+      // --- Tremont ---
+      { name: "Parallax", neighborhood: "Tremont", cuisine: "New American", price: "$$$", favorite: true },
+      { name: "Dante", neighborhood: "Tremont", cuisine: "Italian", price: "$$$", favorite: false },
+      { name: "Prosperity Social Club", neighborhood: "Tremont", cuisine: "American", price: "$$", favorite: false },
+      { name: "South Side", neighborhood: "Tremont", cuisine: "American", price: "$$", favorite: false },
+      { name: "Grumpy's Cafe", neighborhood: "Tremont", cuisine: "Breakfast", price: "$$", favorite: false },
+      { name: "Bourbon Street Barrel Room", neighborhood: "Tremont", cuisine: "Cajun", price: "$$", favorite: false },
+      { name: "Ginko", neighborhood: "Tremont", cuisine: "Japanese", price: "$$$", favorite: false },
+      { name: "EDWINS Leadership & Restaurant Institute", neighborhood: "Tremont", cuisine: "French", price: "$$$", favorite: true },
+      { name: "Fat Cats", neighborhood: "Tremont", cuisine: "American", price: "$$", favorite: false },
+
+      // --- Lakewood ---
+      { name: "Buckeye Beer Engine", neighborhood: "Lakewood", cuisine: "Burgers & Brews", price: "$$", favorite: true },
+      { name: "Deagan's Kitchen & Bar", neighborhood: "Lakewood", cuisine: "American", price: "$$", favorite: false },
+      { name: "Melt Bar and Grilled", neighborhood: "Lakewood", cuisine: "Grilled Cheese", price: "$$", favorite: false },
+      { name: "Angelo's Pizza", neighborhood: "Lakewood", cuisine: "Pizza", price: "$$", favorite: false },
+      { name: "Salt+", neighborhood: "Lakewood", cuisine: "New American", price: "$$$", favorite: true },
+      { name: "Georgetown Restaurant", neighborhood: "Lakewood", cuisine: "Breakfast", price: "$$", favorite: false },
+      { name: "Pier W", neighborhood: "Lakewood", cuisine: "Seafood", price: "$$$$", favorite: true },
+      { name: "The Root Cafe", neighborhood: "Lakewood", cuisine: "Vegetarian", price: "$", favorite: false },
+      { name: "Around the Corner Saloon", neighborhood: "Lakewood", cuisine: "American", price: "$$", favorite: false },
+
+      // --- Parma ---
+      { name: "Das Schnitzel Haus", neighborhood: "Parma", cuisine: "German", price: "$$", favorite: true },
+      { name: "Stancato's Italian Restaurant", neighborhood: "Parma", cuisine: "Italian", price: "$$", favorite: false },
+      { name: "Pizza by Robert", neighborhood: "Parma", cuisine: "Pizza", price: "$", favorite: false },
+      { name: "Parma Tavern", neighborhood: "Parma", cuisine: "American", price: "$$", favorite: false },
+      { name: "The 3 Spot", neighborhood: "Parma", cuisine: "American", price: "$$", favorite: false },
+      { name: "Sausage Shoppe", neighborhood: "Parma", cuisine: "Deli", price: "$", favorite: false },
+      { name: "Parma Family Restaurant", neighborhood: "Parma", cuisine: "Diner", price: "$", favorite: false },
+
+      // --- Cleveland ---
+      { name: "Lola Bistro", neighborhood: "Cleveland", cuisine: "New American", price: "$$$", favorite: true },
+      { name: "Mabel's BBQ", neighborhood: "Cleveland", cuisine: "BBQ", price: "$$", favorite: true },
+      { name: "Slyman's Restaurant", neighborhood: "Cleveland", cuisine: "Deli", price: "$", favorite: true },
+      { name: "Blue Point Grille", neighborhood: "Cleveland", cuisine: "Seafood", price: "$$$$", favorite: false },
+      { name: "Marble Room Steaks & Raw Bar", neighborhood: "Cleveland", cuisine: "Steakhouse", price: "$$$$", favorite: false },
+      { name: "Alley Cat Oyster Bar", neighborhood: "Cleveland", cuisine: "Seafood", price: "$$$", favorite: false },
+      { name: "Cleveland Chop", neighborhood: "Cleveland", cuisine: "Steakhouse", price: "$$$", favorite: false },
+      { name: "Happy Dog", neighborhood: "Cleveland", cuisine: "Hot Dogs", price: "$", favorite: false },
+      { name: "Cafe Istanbul", neighborhood: "Cleveland", cuisine: "Turkish", price: "$$", favorite: false },
+      { name: "Anatolia Cafe", neighborhood: "Cleveland", cuisine: "Turkish", price: "$$", favorite: false },
+      { name: "Crust", neighborhood: "Cleveland", cuisine: "Pizza", price: "$$", favorite: false }
+    ];
+
+    // ===============================================================
+    // 2. STORAGE KEYS, APP STATE, AND CACHED ELEMENTS
+    // ===============================================================
+    const PRICE_LEVELS = ["$", "$$", "$$$", "$$$$"];
+    const RESTAURANT_STORAGE_KEY = "mbDinnerDecider.restaurants.v1";
+    const MUTED_STORAGE_KEY = "mbDinnerDecider.muted.v1";
+    const THEME_STORAGE_KEY = "mbDinnerDecider.theme.v1";
+    const MAX_RUNNER_UPS = 6;
+
+    let restaurants = loadRestaurants();
+    let isSpinning = false;
+    let muted = loadBoolean(MUTED_STORAGE_KEY, false);
+    let theme = loadTheme();
+    let editingIndex = -1;
+    let tickTimer = null;
+    let toastTimer = null;
+    let winningTimer = null;
+    let reelCurrentRows = [[], [], []];
+
+    const $ = (id) => document.getElementById(id);
+    const reelWindows = Array.from(document.querySelectorAll(".reel-window"));
+
+    const els = {
+      machine: $("machine"),
+      marqueeBulbs: $("marqueeBulbs"),
+      reels: $("reels"),
+      winnerOverlay: $("winnerOverlay"),
+      neighborhoodFilter: $("neighborhoodFilter"),
+      priceFilter: $("priceFilter"),
+      poolCount: $("poolCount"),
+      pullBtn: $("pullBtn"),
+      lever: $("lever"),
+      leverArm: $("leverArm"),
+      soundBtn: $("soundBtn"),
+      soundLabel: $("soundLabel"),
+      themeBtn: $("themeBtn"),
+      themeIcon: $("themeIcon"),
+      themeLabel: $("themeLabel"),
+      backRoomBtn: $("backRoomBtn"),
+      resultCard: $("resultCard"),
+      winnerName: $("winnerName"),
+      winnerMeta: $("winnerMeta"),
+      directionsBtn: $("directionsBtn"),
+      alsoList: $("alsoList"),
+      backRoomModal: $("backRoomModal"),
+      closeBackRoom: $("closeBackRoom"),
+      restaurantForm: $("restaurantForm"),
+      restName: $("restName"),
+      restNeighborhood: $("restNeighborhood"),
+      restCuisine: $("restCuisine"),
+      restPrice: $("restPrice"),
+      restFavorite: $("restFavorite"),
+      restSubmitBtn: $("restSubmitBtn"),
+      cancelEditBtn: $("cancelEditBtn"),
+      resetListBtn: $("resetListBtn"),
+      exportListBtn: $("exportListBtn"),
+      importListBtn: $("importListBtn"),
+      importFile: $("importFile"),
+      restaurantList: $("restaurantList"),
+      restCount: $("restCount"),
+      backRoomStatus: $("backRoomStatus"),
+      neighborhoodSuggestions: $("neighborhoodSuggestions"),
+      coinLayer: $("coinLayer"),
+      toast: $("toast")
+    };
+
+    // ===============================================================
+    // 3. SMALL DATA HELPERS
+    // ===============================================================
+    function cloneRestaurants(list) {
+      return list.map((restaurant) => ({ ...restaurant }));
+    }
+
+    // Clean up one restaurant object, whether it came from localStorage,
+    // an imported file, or the starter array above.
+    function normalizeRestaurant(raw) {
+      if (!raw || typeof raw !== "object") return null;
+
+      const name = String(raw.name || "").trim().slice(0, 80);
+      if (!name) return null;
+
+      const neighborhood = String(raw.neighborhood || "Cleveland").trim().slice(0, 50) || "Cleveland";
+      const cuisine = String(raw.cuisine || "Restaurant").trim().slice(0, 50) || "Restaurant";
+      const price = PRICE_LEVELS.includes(raw.price) ? raw.price : "$$";
+
+      return {
+        name,
+        neighborhood,
+        cuisine,
+        price,
+        favorite: Boolean(raw.favorite)
+      };
+    }
+
+    function loadRestaurants() {
+      try {
+        const saved = localStorage.getItem(RESTAURANT_STORAGE_KEY);
+        if (saved === null) return cloneRestaurants(STARTER_RESTAURANTS);
+
+        const parsed = JSON.parse(saved);
+        if (!Array.isArray(parsed)) return cloneRestaurants(STARTER_RESTAURANTS);
+
+        // An intentionally empty saved list is valid; the user can add to it.
+        return parsed.map(normalizeRestaurant).filter(Boolean);
+      } catch (error) {
+        console.warn("Could not read the saved restaurant list.", error);
+        return cloneRestaurants(STARTER_RESTAURANTS);
+      }
+    }
+
+    function saveRestaurants() {
+      try {
+        localStorage.setItem(RESTAURANT_STORAGE_KEY, JSON.stringify(restaurants));
+      } catch (error) {
+        console.warn("Could not save the restaurant list.", error);
+        showToast("This browser would not let the list be saved.");
+      }
+    }
+
+    function loadBoolean(key, fallback) {
+      try {
+        const value = localStorage.getItem(key);
+        if (value === null) return fallback;
+        return value === "true";
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function saveBoolean(key, value) {
+      try {
+        localStorage.setItem(key, String(value));
+      } catch (error) {
+        console.warn("Could not save a setting.", error);
+      }
+    }
+
+    function loadTheme() {
+      try {
+        return localStorage.getItem(THEME_STORAGE_KEY) === "day" ? "day" : "night";
+      } catch (error) {
+        return "night";
+      }
+    }
+
+    function saveTheme(value) {
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, value);
+      } catch (error) {
+        console.warn("Could not save the theme.", error);
+      }
+    }
+
+    function randomItem(list) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function shuffle(list) {
+      const copy = list.slice();
+      for (let index = copy.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+      }
+      return copy;
+    }
+
+    function restaurantCountLabel(count) {
+      return count + (count === 1 ? " restaurant" : " restaurants");
+    }
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      toastTimer = setTimeout(() => els.toast.classList.remove("show"), 3400);
+    }
+    // ===============================================================
+    // 4. WEB AUDIO SOUND EFFECTS (no audio files needed)
+    // ===============================================================
+    const Sound = (() => {
+      let audioContext = null;
+      let masterGain = null;
+
+      function ensureContext() {
+        if (!audioContext) {
+          const AudioCtor = window.AudioContext || window.webkitAudioContext;
+          if (!AudioCtor) return null;
+
+          audioContext = new AudioCtor();
+          masterGain = audioContext.createGain();
+          masterGain.gain.value = muted ? 0 : 0.45;
+          masterGain.connect(audioContext.destination);
+        }
+
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+
+        return audioContext;
+      }
+
+      function soundContext() {
+        if (muted) return null;
+        return ensureContext();
+      }
+
+      function tone(context, frequency, start, duration, type, volume, endFrequency) {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, start);
+        if (endFrequency) {
+          oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration);
+        }
+
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+        oscillator.connect(gain);
+        gain.connect(masterGain);
+        oscillator.start(start);
+        oscillator.stop(start + duration + 0.03);
+      }
+
+      function noise(context, start, duration, volume, cutoff) {
+        const frameCount = Math.max(1, Math.floor(context.sampleRate * duration));
+        const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let index = 0; index < frameCount; index += 1) {
+          data[index] = (Math.random() * 2 - 1) * (1 - index / frameCount);
+        }
+
+        const source = context.createBufferSource();
+        const filter = context.createBiquadFilter();
+        const gain = context.createGain();
+
+        source.buffer = buffer;
+        filter.type = "lowpass";
+        filter.frequency.value = cutoff;
+        gain.gain.value = volume;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        source.start(start);
+        source.stop(start + duration);
+      }
+
+      return {
+        unlock() {
+          ensureContext();
+        },
+
+        applyMute() {
+          if (masterGain) {
+            masterGain.gain.value = muted ? 0 : 0.45;
+          }
+        },
+
+        lever() {
+          const context = soundContext();
+          if (!context) return;
+          const now = context.currentTime;
+          tone(context, 95, now, 0.22, "sine", 0.22, 45);
+          noise(context, now, 0.18, 0.16, 500);
+          tone(context, 220, now + 0.03, 0.08, "square", 0.04);
+        },
+
+        tick() {
+          const context = soundContext();
+          if (!context) return;
+          const now = context.currentTime;
+          tone(context, 1450, now, 0.03, "square", 0.018, 900);
+          noise(context, now, 0.018, 0.02, 2500);
+        },
+
+        thunk() {
+          const context = soundContext();
+          if (!context) return;
+          const now = context.currentTime;
+          tone(context, 120, now, 0.28, "sine", 0.24, 48);
+          noise(context, now, 0.12, 0.12, 420);
+        },
+
+        jingle() {
+          const context = soundContext();
+          if (!context) return;
+          const now = context.currentTime + 0.03;
+          const melody = [523.25, 659.25, 783.99, 1046.5, 1318.51];
+
+          melody.forEach((frequency, index) => {
+            tone(context, frequency, now + index * 0.11, 0.75, "triangle", 0.12);
+            tone(context, frequency * 2, now + index * 0.11, 0.45, "sine", 0.04);
+          });
+
+          for (let index = 0; index < 12; index += 1) {
+            const frequency = 1100 + Math.random() * 1600;
+            const start = now + 0.55 + Math.random() * 1.1;
+            tone(context, frequency, start, 0.22, "sine", 0.035, frequency * 1.05);
+          }
+
+          noise(context, now, 0.5, 0.02, 6000);
+        }
+      };
+    })();
+
+    function startTicking() {
+      stopTicking();
+      if (muted) return;
+      tickTimer = setInterval(() => Sound.tick(), 78);
+      Sound.tick();
+    }
+
+    function stopTicking() {
+      if (tickTimer) {
+        clearInterval(tickTimer);
+        tickTimer = null;
+      }
+    }
+
+    // ===============================================================
+    // 5. THEME, SOUND BUTTON, AND MARQUEE BULBS
+    // ===============================================================
+    function applyTheme() {
+      const isDay = theme === "day";
+      document.body.classList.toggle("theme-day", isDay);
+      document.body.classList.toggle("theme-night", !isDay);
+      els.themeIcon.textContent = isDay ? "☀" : "☾";
+      els.themeLabel.textContent = isDay ? "Daylight" : "Night";
+      els.themeBtn.setAttribute("aria-label", isDay ? "Daylight theme" : "Night theme");
+
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) {
+        themeMeta.content = isDay ? "#6b2a24" : "#1a0d07";
+      }
+    }
+
+    function toggleTheme() {
+      theme = theme === "day" ? "night" : "day";
+      saveTheme(theme);
+      applyTheme();
+    }
+
+    function updateSoundButton() {
+      els.soundBtn.classList.toggle("muted", muted);
+      els.soundBtn.setAttribute("aria-pressed", String(muted));
+      els.soundBtn.setAttribute("aria-label", muted ? "Sound muted" : "Sound on");
+      els.soundLabel.textContent = muted ? "Muted" : "Sound";
+    }
+
+    function toggleMute() {
+      muted = !muted;
+      saveBoolean(MUTED_STORAGE_KEY, muted);
+      Sound.applyMute();
+      updateSoundButton();
+
+      if (!muted) {
+        Sound.unlock();
+        Sound.tick();
+      }
+    }
+
+    // Place chasing bulbs around the edge of the marquee.
+    function buildMarqueeBulbs() {
+      const positions = [];
+      const topCount = 12;
+      const sideCount = 4;
+      const bottomCount = 12;
+
+      for (let index = 0; index < topCount; index += 1) {
+        positions.push({ x: 3 + (94 / (topCount - 1)) * index, y: 6 });
+      }
+      for (let index = 0; index < sideCount; index += 1) {
+        positions.push({ x: 97, y: 24 + index * 18 });
+      }
+      for (let index = 0; index < bottomCount; index += 1) {
+        positions.push({ x: 97 - (94 / (bottomCount - 1)) * index, y: 94 });
+      }
+      for (let index = 0; index < sideCount; index += 1) {
+        positions.push({ x: 3, y: 78 - index * 18 });
+      }
+
+      els.marqueeBulbs.innerHTML = "";
+      positions.forEach((position, index) => {
+        const bulb = document.createElement("span");
+        bulb.className = "bulb";
+        bulb.style.left = position.x + "%";
+        bulb.style.top = position.y + "%";
+        bulb.style.setProperty("--delay", (-index * 0.08).toFixed(2) + "s");
+        els.marqueeBulbs.appendChild(bulb);
+      });
+    }
+
+    // ===============================================================
+    // 6. FILTERS AND NEIGHBORHOOD SUGGESTIONS
+    // ===============================================================
+    function refreshNeighborhoodFilter() {
+      const previous = els.neighborhoodFilter.value;
+      const neighborhoods = [...new Set(restaurants.map((restaurant) => restaurant.neighborhood))]
+        .sort((first, second) => first.localeCompare(second));
+
+      els.neighborhoodFilter.innerHTML = "";
+      const allOption = document.createElement("option");
+      allOption.value = "all";
+      allOption.textContent = "All neighborhoods";
+      els.neighborhoodFilter.appendChild(allOption);
+
+      neighborhoods.forEach((neighborhood) => {
+        const option = document.createElement("option");
+        option.value = neighborhood;
+        option.textContent = neighborhood;
+        els.neighborhoodFilter.appendChild(option);
+      });
+
+      els.neighborhoodFilter.value = neighborhoods.includes(previous) ? previous : "all";
+    }
+
+    function updateNeighborhoodSuggestions() {
+      const neighborhoods = [...new Set([
+        ...STARTER_RESTAURANTS.map((restaurant) => restaurant.neighborhood),
+        ...restaurants.map((restaurant) => restaurant.neighborhood)
+      ])].sort((first, second) => first.localeCompare(second));
+
+      els.neighborhoodSuggestions.innerHTML = "";
+      neighborhoods.forEach((neighborhood) => {
+        const option = document.createElement("option");
+        option.value = neighborhood;
+        els.neighborhoodSuggestions.appendChild(option);
+      });
+    }
+
+    function getFilteredRestaurants() {
+      const neighborhood = els.neighborhoodFilter.value;
+      const price = els.priceFilter.value;
+
+      return restaurants.filter((restaurant) => {
+        const matchesNeighborhood = neighborhood === "all" || restaurant.neighborhood === neighborhood;
+        const matchesPrice = price === "all" || restaurant.price === price;
+        return matchesNeighborhood && matchesPrice;
+      });
+    }
+
+    function updatePoolCount() {
+      els.poolCount.textContent = String(getFilteredRestaurants().length);
+    }
+
+    function handleFilterChange() {
+      updatePoolCount();
+      if (isSpinning) return;
+      clearWinnerMoment();
+      clearResult();
+      renderIdleReels();
+    }
+
+    // ===============================================================
+    // 7. BUILDING THE REELS
+    // ===============================================================
+    function makeReelItem(restaurant, placeholder) {
+      const item = document.createElement("div");
+      item.className = "reel-item";
+
+      if (!restaurant) {
+        item.classList.add("placeholder");
+        const name = document.createElement("span");
+        name.className = "reel-name";
+        name.textContent = (placeholder && placeholder.name) || "Add a spot in the Back Room";
+        const meta = document.createElement("span");
+        meta.className = "reel-meta";
+        meta.textContent = (placeholder && placeholder.meta) || "No restaurants yet";
+        item.append(name, meta);
+        return item;
+      }
+
+      const name = document.createElement("span");
+      name.className = "reel-name";
+      name.textContent = restaurant.name;
+
+      const meta = document.createElement("span");
+      meta.className = "reel-meta";
+      meta.textContent = (restaurant.favorite ? "★ " : "") + restaurant.price;
+
+      item.append(name, meta);
+      return item;
+    }
+
+    function renderReel(index, rows, placeholder) {
+      const windowElement = reelWindows[index];
+      const strip = windowElement.querySelector(".reel-strip");
+
+      strip.innerHTML = "";
+      rows.forEach((restaurant) => strip.appendChild(makeReelItem(restaurant, placeholder)));
+      strip.style.transform = "translate3d(0, 0, 0)";
+      strip.style.filter = "";
+      windowElement.classList.remove("spinning");
+      reelCurrentRows[index] = rows.slice();
+    }
+
+    function renderIdleReels() {
+      const eligible = getFilteredRestaurants();
+
+      if (!restaurants.length) {
+        for (let index = 0; index < 3; index += 1) {
+          renderReel(index, [null, null, null], {
+            name: "Add a spot in the Back Room",
+            meta: "No restaurants yet"
+          });
+        }
+        return;
+      }
+
+      if (!eligible.length) {
+        for (let index = 0; index < 3; index += 1) {
+          renderReel(index, [null, null, null], {
+            name: "No matches",
+            meta: "Try wider filters"
+          });
+        }
+        return;
+      }
+
+      const shuffled = shuffle(eligible);
+      let cursor = 0;
+      const nextRestaurant = () => {
+        const restaurant = shuffled[cursor % shuffled.length];
+        cursor += 1;
+        return restaurant;
+      };
+
+      for (let index = 0; index < 3; index += 1) {
+        renderReel(index, [nextRestaurant(), nextRestaurant(), nextRestaurant()]);
+      }
+    }
+    // ===============================================================
+    // 8. PICKING THE WINNER AND RUNNER-UPS
+    // ===============================================================
+    function pickWeightedWinner(eligible) {
+      const totalWeight = eligible.reduce(
+        (sum, restaurant) => sum + (restaurant.favorite ? 2 : 1),
+        0
+      );
+
+      let roll = Math.random() * totalWeight;
+      for (const restaurant of eligible) {
+        roll -= restaurant.favorite ? 2 : 1;
+        if (roll < 0) return restaurant;
+      }
+
+      return eligible[eligible.length - 1];
+    }
+
+    // Pick up to six alternatives. They are used in the top and bottom
+    // rows: one above and one below each of the three reels.
+    function pickRunnerUps(eligible, winner, count) {
+      const alternatives = shuffle(eligible.filter((restaurant) => restaurant !== winner));
+      const chosen = alternatives.slice(0, count);
+
+      // If there are very few restaurants, repeat the alternatives rather
+      // than putting the winner in the top or bottom row.
+      const fillPool = alternatives.length ? alternatives : [winner];
+      let fillIndex = 0;
+      while (chosen.length < count) {
+        chosen.push(fillPool[fillIndex % fillPool.length]);
+        fillIndex += 1;
+      }
+
+      return chosen;
+    }
+
+    // ===============================================================
+    // 9. REEL SPIN ANIMATION
+    // ===============================================================
+    function setSpinningState(spinning) {
+      els.pullBtn.disabled = spinning;
+      els.lever.classList.toggle("disabled", spinning);
+      els.lever.setAttribute("aria-disabled", String(spinning));
+      els.neighborhoodFilter.disabled = spinning;
+      els.priceFilter.disabled = spinning;
+    }
+
+    function spinReel(index, newRows, duration, pool) {
+      return new Promise((resolve) => {
+        const windowElement = reelWindows[index];
+        const bounce = windowElement.querySelector(".reel-bounce");
+        const strip = windowElement.querySelector(".reel-strip");
+        const rowHeight = windowElement.clientHeight / 3;
+        const oldRows = reelCurrentRows[index].length === 3 ? reelCurrentRows[index] : newRows;
+        const fillerCount = 24 + index * 6;
+
+        const filler = Array.from({ length: fillerCount }, () => randomItem(pool));
+        const sequence = [...oldRows, ...filler, ...newRows];
+
+        strip.innerHTML = "";
+        sequence.forEach((restaurant) => strip.appendChild(makeReelItem(restaurant)));
+        strip.style.transform = "translate3d(0, 0, 0)";
+        strip.style.filter = "";
+
+        bounce.classList.remove("settling");
+        void bounce.offsetWidth;
+        windowElement.classList.add("spinning");
+
+        const distance = (oldRows.length + fillerCount) * rowHeight;
+        const startTime = performance.now();
+
+        function animate(now) {
+          const progress = Math.min(1, (now - startTime) / duration);
+          const eased = 1 - Math.pow(1 - progress, 4);
+          strip.style.transform = "translate3d(0, " + (-distance * eased) + "px, 0)";
+
+          // Remove the motion blur as the reel slows down for its landing.
+          if (progress > 0.74) {
+            windowElement.classList.remove("spinning");
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+            return;
+          }
+
+          strip.style.transform = "translate3d(0, " + (-distance) + "px, 0)";
+          windowElement.classList.remove("spinning");
+          bounce.classList.add("settling");
+          Sound.thunk();
+          reelCurrentRows[index] = newRows.slice();
+          resolve();
+        }
+
+        requestAnimationFrame(animate);
+      });
+    }
+
+    // ===============================================================
+    // 10. THE FULL SPIN
+    // ===============================================================
+    async function spin() {
+      if (isSpinning) return;
+
+      const eligible = getFilteredRestaurants();
+      if (!eligible.length) {
+        showToast("No restaurants match those filters. Widen the filters or add a spot in the Back Room.");
+        return;
+      }
+
+      Sound.unlock();
+      isSpinning = true;
+      setSpinningState(true);
+      clearWinnerMoment();
+      clearResult();
+      Sound.lever();
+      startTicking();
+
+      const winner = pickWeightedWinner(eligible);
+      const runners = pickRunnerUps(eligible, winner, MAX_RUNNER_UPS);
+      const finalRows = [
+        [runners[0], winner, runners[1]],
+        [runners[2], winner, runners[3]],
+        [runners[4], winner, runners[5]]
+      ];
+      const durations = [1650, 2200, 2750];
+
+      try {
+        await Promise.all(
+          finalRows.map((rows, index) => spinReel(index, rows, durations[index], eligible))
+        );
+      } catch (error) {
+        console.error("A reel failed to spin.", error);
+      } finally {
+        stopTicking();
+        isSpinning = false;
+        setSpinningState(false);
+      }
+
+      showWinnerMoment(winner, runners);
+    }
+
+    // ===============================================================
+    // 11. WINNER MOMENT, RESULT CARD, AND COINS
+    // ===============================================================
+    function clearWinnerMoment() {
+      els.winnerOverlay.classList.remove("show");
+      document.body.classList.remove("winning");
+      clearTimeout(winningTimer);
+      winningTimer = null;
+    }
+
+    function clearResult() {
+      els.resultCard.hidden = true;
+      els.winnerName.textContent = "";
+      els.winnerMeta.textContent = "";
+      els.directionsBtn.href = "#";
+      els.alsoList.innerHTML = "";
+    }
+
+    function showWinnerMoment(winner, runners) {
+      els.winnerOverlay.classList.add("show");
+      document.body.classList.add("winning");
+      Sound.jingle();
+      launchCoins();
+      showResultCard(winner, runners);
+
+      clearTimeout(winningTimer);
+      winningTimer = setTimeout(() => {
+        document.body.classList.remove("winning");
+      }, 6000);
+    }
+
+    function showResultCard(winner, runners) {
+      els.winnerName.textContent = winner.name;
+      els.winnerMeta.textContent = [
+        winner.neighborhood,
+        winner.cuisine,
+        winner.price,
+        winner.favorite ? "Favorite" : ""
+      ].filter(Boolean).join(" • ");
+
+      const mapsQuery = winner.name + ", " + winner.neighborhood + ", Ohio";
+      els.directionsBtn.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(mapsQuery);
+
+      // De-duplicate alternatives when the list is very small.
+      const seen = new Set();
+      const uniqueRunners = [];
+      runners.forEach((restaurant) => {
+        const key = restaurant.name + "|" + restaurant.neighborhood;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueRunners.push(restaurant);
+        }
+      });
+
+      els.alsoList.innerHTML = "";
+      uniqueRunners.forEach((restaurant) => {
+        const item = document.createElement("li");
+        item.className = "also-item";
+
+        const name = document.createElement("span");
+        name.className = "also-name";
+        name.textContent = (restaurant.favorite ? "★ " : "") + restaurant.name;
+
+        const meta = document.createElement("span");
+        meta.className = "also-meta";
+        meta.textContent = restaurant.neighborhood + " • " + restaurant.cuisine + " • " + restaurant.price;
+
+        item.append(name, meta);
+        els.alsoList.appendChild(item);
+      });
+
+      els.resultCard.hidden = false;
+    }
+
+    function launchCoins() {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const count = reduceMotion ? 10 : 46;
+      els.coinLayer.innerHTML = "";
+
+      for (let index = 0; index < count; index += 1) {
+        const isSparkle = Math.random() < 0.3;
+        const particle = document.createElement("span");
+        particle.className = isSparkle ? "sparkle" : "coin";
+
+        const size = isSparkle ? 8 + Math.random() * 10 : 10 + Math.random() * 18;
+        particle.style.setProperty("--x", (Math.random() * 100).toFixed(1) + "vw");
+        particle.style.setProperty("--size", size.toFixed(0) + "px");
+        particle.style.setProperty("--drift", (-80 + Math.random() * 160).toFixed(0) + "px");
+        particle.style.setProperty("--spin", (360 + Math.random() * 900).toFixed(0) + "deg");
+        particle.style.setProperty("--duration", (2.2 + Math.random() * 1.8).toFixed(2) + "s");
+        particle.style.setProperty("--delay", (Math.random() * 0.9).toFixed(2) + "s");
+
+        if (!isSparkle) {
+          particle.textContent = Math.random() < 0.5 ? "$" : "¢";
+        }
+
+        els.coinLayer.appendChild(particle);
+      }
+
+      setTimeout(() => {
+        els.coinLayer.innerHTML = "";
+      }, 5200);
+    }
+    // ===============================================================
+    // 12. BACK ROOM LIST MANAGER
+    // ===============================================================
+    function setBackRoomStatus(message, isError) {
+      els.backRoomStatus.textContent = message || "";
+      els.backRoomStatus.classList.toggle("error", Boolean(isError));
+    }
+
+    function resetRestaurantForm() {
+      els.restaurantForm.reset();
+      els.restPrice.value = "$$";
+      els.restFavorite.checked = false;
+      editingIndex = -1;
+      els.restSubmitBtn.textContent = "Add to the list";
+      els.cancelEditBtn.hidden = true;
+    }
+
+    function onRestaurantDataChanged() {
+      saveRestaurants();
+      refreshNeighborhoodFilter();
+      updateNeighborhoodSuggestions();
+      updatePoolCount();
+      renderBackRoomList();
+
+      // Do not interrupt an active spin, but otherwise refresh the reels.
+      if (!isSpinning) {
+        clearWinnerMoment();
+        clearResult();
+        renderIdleReels();
+      }
+    }
+
+    function renderBackRoomList() {
+      els.restaurantList.innerHTML = "";
+      els.restCount.textContent = restaurantCountLabel(restaurants.length);
+
+      if (!restaurants.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty-list";
+        empty.textContent = "The room is empty. Add a restaurant above or reset the starter list.";
+        els.restaurantList.appendChild(empty);
+        return;
+      }
+
+      restaurants.forEach((restaurant, index) => {
+        const row = document.createElement("div");
+        row.className = "rest-row";
+
+        const favoriteButton = document.createElement("button");
+        favoriteButton.type = "button";
+        favoriteButton.className = "fav-btn" + (restaurant.favorite ? " active" : "");
+        favoriteButton.textContent = restaurant.favorite ? "★" : "☆";
+        favoriteButton.setAttribute("aria-pressed", String(restaurant.favorite));
+        favoriteButton.setAttribute(
+          "aria-label",
+          restaurant.favorite
+            ? "Remove " + restaurant.name + " from favorites"
+            : "Mark " + restaurant.name + " as a favorite"
+        );
+        favoriteButton.addEventListener("click", () => {
+          restaurant.favorite = !restaurant.favorite;
+          onRestaurantDataChanged();
+          setBackRoomStatus(
+            restaurant.favorite
+              ? restaurant.name + " is now a favorite (2x chance)."
+              : restaurant.name + " removed from favorites."
+          );
+        });
+
+        const info = document.createElement("div");
+        info.className = "rest-info";
+
+        const name = document.createElement("div");
+        name.className = "rest-name";
+        name.textContent = restaurant.name;
+
+        const meta = document.createElement("div");
+        meta.className = "rest-meta";
+        meta.textContent = restaurant.neighborhood + " • " + restaurant.cuisine + " • " + restaurant.price;
+
+        info.append(name, meta);
+
+        const actions = document.createElement("div");
+        actions.className = "rest-actions";
+
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "mini-btn";
+        editButton.textContent = "Edit";
+        editButton.addEventListener("click", () => startEditingRestaurant(index));
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "mini-btn";
+        deleteButton.textContent = "Delete";
+        deleteButton.addEventListener("click", () => deleteRestaurant(index));
+
+        actions.append(editButton, deleteButton);
+        row.append(favoriteButton, info, actions);
+        els.restaurantList.appendChild(row);
+      });
+    }
+
+    function startEditingRestaurant(index) {
+      const restaurant = restaurants[index];
+      if (!restaurant) return;
+
+      editingIndex = index;
+      els.restName.value = restaurant.name;
+      els.restNeighborhood.value = restaurant.neighborhood;
+      els.restCuisine.value = restaurant.cuisine;
+      els.restPrice.value = restaurant.price;
+      els.restFavorite.checked = restaurant.favorite;
+      els.restSubmitBtn.textContent = "Save changes";
+      els.cancelEditBtn.hidden = false;
+      setBackRoomStatus("Editing " + restaurant.name + ".");
+      els.restaurantForm.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      els.restName.focus();
+    }
+
+    function deleteRestaurant(index) {
+      const restaurant = restaurants[index];
+      if (!restaurant) return;
+      if (!window.confirm('Remove "' + restaurant.name + '" from the list?')) return;
+
+      restaurants.splice(index, 1);
+      resetRestaurantForm();
+      onRestaurantDataChanged();
+      setBackRoomStatus("Removed " + restaurant.name + ".");
+    }
+
+    function handleRestaurantSubmit(event) {
+      event.preventDefault();
+
+      const name = els.restName.value.trim();
+      const neighborhood = els.restNeighborhood.value.trim();
+      const cuisine = els.restCuisine.value.trim();
+      const price = els.restPrice.value;
+      const favorite = els.restFavorite.checked;
+
+      if (!name || !neighborhood || !cuisine) {
+        setBackRoomStatus("Please fill in the name, neighborhood, and cuisine.", true);
+        return;
+      }
+
+      const entry = { name, neighborhood, cuisine, price, favorite };
+      let statusMessage = "";
+
+      if (editingIndex >= 0 && editingIndex < restaurants.length) {
+        restaurants[editingIndex] = entry;
+        statusMessage = "Saved changes to " + name + ".";
+      } else {
+        restaurants.push(entry);
+        statusMessage = "Added " + name + " to the list.";
+      }
+
+      resetRestaurantForm();
+      onRestaurantDataChanged();
+      setBackRoomStatus(statusMessage);
+    }
+
+    function resetToStarterList() {
+      if (!window.confirm("Reset to the original starter list? This replaces your current list.")) return;
+
+      restaurants = cloneRestaurants(STARTER_RESTAURANTS);
+      resetRestaurantForm();
+      onRestaurantDataChanged();
+      setBackRoomStatus("Starter list restored — " + restaurantCountLabel(restaurants.length) + ".");
+    }
+
+    function exportRestaurantList() {
+      const blob = new Blob([JSON.stringify(restaurants, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "dinner-decider-restaurants.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setBackRoomStatus("Exported " + restaurantCountLabel(restaurants.length) + ".");
+    }
+
+    async function importRestaurantList(file) {
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const rawList = Array.isArray(parsed)
+          ? parsed
+          : parsed && Array.isArray(parsed.restaurants)
+            ? parsed.restaurants
+            : null;
+
+        if (!rawList) {
+          throw new Error("The file must contain a JSON array of restaurants.");
+        }
+
+        const imported = rawList.map(normalizeRestaurant).filter(Boolean);
+        if (!imported.length) {
+          throw new Error("No valid restaurants were found in that file.");
+        }
+
+        if (!window.confirm("Replace the current list with " + restaurantCountLabel(imported.length) + " from this file?")) {
+          return;
+        }
+
+        restaurants = imported;
+        resetRestaurantForm();
+        onRestaurantDataChanged();
+        setBackRoomStatus("Imported " + restaurantCountLabel(imported.length) + ".");
+      } catch (error) {
+        setBackRoomStatus("Import failed: " + error.message, true);
+      } finally {
+        els.importFile.value = "";
+      }
+    }
+
+    function openBackRoom() {
+      renderBackRoomList();
+      updateNeighborhoodSuggestions();
+      els.backRoomModal.hidden = false;
+      document.body.classList.add("modal-open");
+      setTimeout(() => els.restName.focus(), 60);
+    }
+
+    function closeBackRoom() {
+      els.backRoomModal.hidden = true;
+      document.body.classList.remove("modal-open");
+      els.backRoomBtn.focus();
+    }
+
+    // ===============================================================
+    // 13. LEVER INTERACTION: TAP, CLICK, OR DRAG DOWN
+    // ===============================================================
+    const LEVER_REST_ANGLE = 6;
+    let leverDrag = null;
+
+    els.lever.addEventListener("pointerdown", (event) => {
+      if (isSpinning) return;
+      Sound.unlock();
+      leverDrag = { startY: event.clientY, moved: 0 };
+      els.lever.classList.add("dragging");
+      els.lever.setPointerCapture(event.pointerId);
+    });
+
+    els.lever.addEventListener("pointermove", (event) => {
+      if (!leverDrag) return;
+      const distance = Math.max(0, event.clientY - leverDrag.startY);
+      leverDrag.moved = Math.max(leverDrag.moved, distance);
+      const angle = LEVER_REST_ANGLE - Math.min(distance * 0.32, 46);
+      els.leverArm.style.transform = "translateX(-50%) rotate(" + angle + "deg)";
+    });
+
+    function finishLeverDrag(event) {
+      if (!leverDrag) return;
+      leverDrag = null;
+      els.lever.classList.remove("dragging");
+      els.leverArm.style.transform = "";
+
+      if (!isSpinning && event.type === "pointerup") {
+        spin();
+      }
+    }
+
+    els.lever.addEventListener("pointerup", finishLeverDrag);
+    els.lever.addEventListener("pointercancel", finishLeverDrag);
+
+    els.lever.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        if (!isSpinning) spin();
+      }
+    });
+
+    // ===============================================================
+    // 14. EVENT WIRING AND STARTUP
+    // ===============================================================
+    els.pullBtn.addEventListener("click", spin);
+    els.soundBtn.addEventListener("click", toggleMute);
+    els.themeBtn.addEventListener("click", toggleTheme);
+    els.backRoomBtn.addEventListener("click", openBackRoom);
+    els.closeBackRoom.addEventListener("click", closeBackRoom);
+
+    els.backRoomModal.addEventListener("click", (event) => {
+      if (event.target.dataset.close === "true") closeBackRoom();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !els.backRoomModal.hidden) closeBackRoom();
+    });
+
+    els.neighborhoodFilter.addEventListener("change", handleFilterChange);
+    els.priceFilter.addEventListener("change", handleFilterChange);
+    els.restaurantForm.addEventListener("submit", handleRestaurantSubmit);
+    els.cancelEditBtn.addEventListener("click", () => {
+      resetRestaurantForm();
+      setBackRoomStatus("");
+    });
+    els.resetListBtn.addEventListener("click", resetToStarterList);
+    els.exportListBtn.addEventListener("click", exportRestaurantList);
+    els.importListBtn.addEventListener("click", () => els.importFile.click());
+    els.importFile.addEventListener("change", () => {
+      const file = els.importFile.files && els.importFile.files[0];
+      if (file) importRestaurantList(file);
+    });
+
+    function init() {
+      applyTheme();
+      updateSoundButton();
+      buildMarqueeBulbs();
+      refreshNeighborhoodFilter();
+      updateNeighborhoodSuggestions();
+      updatePoolCount();
+      renderIdleReels();
+      renderBackRoomList();
+    }
+
+    init();
+  </script>
+</body>
+</html>
